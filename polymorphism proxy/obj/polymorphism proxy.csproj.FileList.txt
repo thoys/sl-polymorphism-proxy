@@ -1,0 +1,8 @@
+obj\Debug\ResolveAssemblyReference.cache
+bin\Debug\polymorphism proxy.exe
+bin\Debug\polymorphism proxy.pdb
+bin\Debug\libsecondlife.dll
+bin\Debug\CookComputing.XmlRpcV2.dll
+bin\Debug\libsecondlife.pdb
+obj\Debug\polymorphism proxy.exe
+obj\Debug\polymorphism proxy.pdb
