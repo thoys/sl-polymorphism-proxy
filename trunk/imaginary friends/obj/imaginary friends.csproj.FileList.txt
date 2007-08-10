@@ -1,8 +1,0 @@
-obj\Debug\ResolveAssemblyReference.cache
-bin\Debug\imaginary friends.exe
-bin\Debug\imaginary friends.pdb
-bin\Debug\libsecondlife.dll
-bin\Debug\CookComputing.XmlRpcV2.dll
-bin\Debug\libsecondlife.pdb
-obj\Debug\imaginary friends.exe
-obj\Debug\imaginary friends.pdb
