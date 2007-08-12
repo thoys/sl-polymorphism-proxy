@@ -1,4 +1,4 @@
-#summary One-sentence summary of this page.
+#See How Imaginary Friends Rock!
 
 = Introduction =
 
@@ -20,7 +20,6 @@ Commands [[IM to the Friend]]:
   * sithere
   * come
   * kill
-
 
 
 
