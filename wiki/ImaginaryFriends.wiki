@@ -1,4 +1,4 @@
-#See How Imaginary Friends Rock!
+See How Imaginary Friends Rock!
 
 = Introduction =
 
@@ -20,7 +20,6 @@ Commands [[IM to the Friend]]:
   * sithere
   * come
   * kill
-
 
 
 
