@@ -11,19 +11,23 @@ namespace imaginary_friends
     public class ImaginaryFriend : Avatar
     {
         //uint LocalID = 0;
-        bool is_male = false;
-        string fname, lname;
+        public bool is_male = false;
+        public string FirstName, LastName;
         new public uint SittingOn = 0;
 
-
+        public override string ToString()
+        {
+            return ID.ToString();
+        }
 
         public ImaginaryFriend(string firstname, string lastname, LLVector3 location, bool male,ulong region_handle,uint localid)
         {
             Position = location;
             Rotation = LLQuaternion.Identity;
             is_male = male;
-            fname = firstname;
-            lname = lastname;
+            FirstName = firstname;
+            LastName = lastname;
+            Name = FirstName + " " + LastName;
             ID = LLUUID.Random();
             LocalID = localid;
             RegionHandle = region_handle;
@@ -59,7 +63,7 @@ namespace imaginary_friends
             p.ObjectData[0].PathScaleX = 100;
             p.ObjectData[0].PathScaleY = 100;
             p.ObjectData[0].Scale = new LLVector3(1, 1, 1);
-            p.ObjectData[0].NameValue = Encoding.ASCII.GetBytes("FirstName STRING RW SV " + fname + "\nLastName STRING RW SV " + lname + " \0");
+            p.ObjectData[0].NameValue = Encoding.ASCII.GetBytes("FirstName STRING RW SV " + FirstName + "\nLastName STRING RW SV " + LastName + " \0");
             byte[] objectdata = new byte[76];
             //Collision
             Buffer.BlockCopy(LLVector4.Zero.GetBytes(), 0, objectdata, 0, 16);
@@ -392,6 +396,7 @@ namespace imaginary_friends
         uint localidcount = 13371337;
         Dictionary<LLUUID, AvatarAppearancePacket> appearances = new Dictionary<LLUUID, AvatarAppearancePacket>();
         Dictionary<ulong, Dictionary<uint,LLUUID>> GlobalLocalIDs = new Dictionary<ulong, Dictionary<uint,LLUUID>>();
+        XmlFriends.ImaginaryConfig Config = new imaginary_friends.XmlFriends.ImaginaryConfig();
         List<ImaginaryFriend> IFriends = new List<ImaginaryFriend>();
         public ImaginaryFriends()
         {
@@ -621,6 +626,47 @@ namespace imaginary_friends
                     f.SendAnimations(proxy, animations);
                     f.SendAppearance(proxy);
                 }
+                return null;
+            }
+            else if (set.ToLower().StartsWith("/savefriends"))
+            {
+                if (Config.Save(IFriends))
+                {
+                    SayToUser("Saving successful");
+                }
+                else
+                {
+                    SayToUser("Saving Failed");
+                }
+                return null;
+            }
+            else if (set.ToLower().StartsWith("/loadfriends"))
+            {
+                List<ImaginaryFriend> IFTempLoad = Config.Load();
+                if (IFTempLoad != null)
+                {
+                    foreach (ImaginaryFriend tempfriend in IFTempLoad)
+                    {
+                        for (int i = IFriends.Count-1; i >= 0 ; i--)
+                        {
+                            if (IFriends[i].ID == tempfriend.ID)
+                            {
+                                IFriends[i].ImaginaryKill(proxy);
+                                IFriends.Remove(IFriends[i]);
+                                break;
+                            }
+                            
+                        }
+                        IFriends.Add(tempfriend);
+                        tempfriend.ImaginaryLogin(proxy);
+                    }
+                    SayToUser("Loaded successful");
+                }
+                else
+                {
+                    SayToUser("Loading Failed");
+                }
+                return null;
             }
             return packet;
         }
@@ -633,6 +679,18 @@ namespace imaginary_friends
             }
             return output.Trim();
         }
-        
+        public void SayToUser(string message)
+        {
+            ChatFromSimulatorPacket packet = new ChatFromSimulatorPacket();
+            packet.ChatData.FromName = Helpers.StringToField("ImaginaryBrain");
+            packet.ChatData.SourceID = LLUUID.Random();
+            packet.ChatData.OwnerID = agentID;
+            packet.ChatData.SourceType = (byte)2;
+            packet.ChatData.ChatType = (byte)1;
+            packet.ChatData.Audible = (byte)1;
+            packet.ChatData.Position = new LLVector3(0, 0, 0);
+            packet.ChatData.Message = Helpers.StringToField(message);
+            proxy.InjectPacket(packet, Direction.Incoming);
+        }
     }
 }
