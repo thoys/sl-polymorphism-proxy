@@ -41,6 +41,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Proxy.cs" />
+    <Compile Include="XmlFriends.cs" />
     <Compile Include="xml\Logger.cs" />
     <Compile Include="xml\SimpleHttpRequest.cs" />
     <Compile Include="xml\XmlRpcBoxcarRequest.cs" />
