@@ -8,13 +8,29 @@ using Nwc.XmlRpc;
 
 namespace imaginary_friends
 {
+    public class AvatarTracking
+    {
+        public AvatarTracking(string name,LLUUID id, uint localid, LLVector3 position, uint parentid)
+        {
+            Name = name;
+            ID = id;
+            LocalID = localid;
+            Position = position;
+            ParentID = parentid;
+            
+        }
+        public string Name;
+        public LLUUID ID;
+        public uint LocalID;
+        public uint ParentID;
+        public LLVector3 Position;
+    }
     public class ImaginaryFriend : Avatar
     {
-        //uint LocalID = 0;
         public bool is_male = false;
         public string FirstName, LastName;
         new public uint SittingOn = 0;
-
+        public LLUUID CurrentAnimID = LLUUID.Zero;
         public override string ToString()
         {
             return ID.ToString();
@@ -352,27 +368,32 @@ namespace imaginary_friends
         }
         public void SendAnimations(Proxy proxy,List<LLUUID> Animations)
         {
-            if (Animations.Count > 0)
+            if (Animations.Count == 0)
             {
-                AvatarAnimationPacket p = new AvatarAnimationPacket();
-
-                p.AnimationList = new AvatarAnimationPacket.AnimationListBlock[Animations.Count];
-                p.AnimationSourceList = new AvatarAnimationPacket.AnimationSourceListBlock[Animations.Count];
-                p.PhysicalAvatarEventList = new AvatarAnimationPacket.PhysicalAvatarEventListBlock[Animations.Count];
-                int i = 0;
-                foreach (LLUUID id in Animations)
-                {
-                    p.AnimationList[i] = new AvatarAnimationPacket.AnimationListBlock();
-                    p.AnimationList[i].AnimID = id;
-                    p.AnimationList[i].AnimSequenceID = 0;
-                    p.AnimationSourceList[i] = new AvatarAnimationPacket.AnimationSourceListBlock();
-                    p.AnimationSourceList[i].ObjectID = ID;
-                    p.PhysicalAvatarEventList[i] = new AvatarAnimationPacket.PhysicalAvatarEventListBlock();
-                    p.PhysicalAvatarEventList[i].TypeData = new byte[0];
-                    i++;
-                }
-                proxy.InjectPacket(p, Direction.Incoming);
+                CurrentAnimID = LLUUID.Zero;
             }
+            else
+            {
+                CurrentAnimID = Animations[0];
+            }
+            AvatarAnimationPacket p = new AvatarAnimationPacket();
+
+            p.AnimationList = new AvatarAnimationPacket.AnimationListBlock[Animations.Count];
+            p.AnimationSourceList = new AvatarAnimationPacket.AnimationSourceListBlock[Animations.Count];
+
+            int i = 0;
+            foreach (LLUUID id in Animations)
+            {
+                p.AnimationList[i] = new AvatarAnimationPacket.AnimationListBlock();
+                p.AnimationList[i].AnimID = id;
+                p.AnimationList[i].AnimSequenceID = 1;
+                p.AnimationSourceList[i] = new AvatarAnimationPacket.AnimationSourceListBlock();
+                p.AnimationSourceList[i].ObjectID = ID;
+                i++;
+            }
+            p.Sender = new AvatarAnimationPacket.SenderBlock();
+            p.Sender.ID = ID;
+            proxy.InjectPacket(p, Direction.Incoming);
         }
         public void ImaginaryKill(Proxy proxy)
         {
@@ -390,7 +411,9 @@ namespace imaginary_friends
         LLUUID sessionID;
         LLVector3 Position;
         ulong RegionHandle=0;
-        
+
+        Dictionary<uint, AvatarTracking> AvatarTracker = new Dictionary<uint, AvatarTracking>();
+        bool FourDimensions = false;
         LLUUID lastselectedobj = LLUUID.Zero;
         uint LocalID = 0;
         uint localidcount = 13371337;
@@ -478,13 +501,31 @@ namespace imaginary_friends
         Packet OnImprovedTerseObjectUpdate(Packet packet, System.Net.IPEndPoint endp)
         {
             ImprovedTerseObjectUpdatePacket terse = (ImprovedTerseObjectUpdatePacket)packet;
+
             if(terse.RegionData.RegionHandle == RegionHandle)
             {
                 for (int i = 0; i < terse.ObjectData.Length; i++ )
                 {
-                    if (Helpers.BytesToUIntBig(terse.ObjectData[i].Data, 0) == LocalID)
+                    uint tid = Helpers.BytesToUIntBig(terse.ObjectData[i].Data, 0);// == LocalID)
+                    LLVector3 tpos = new LLVector3(terse.ObjectData[i].Data, 22);
+                    if (tid == LocalID)
                     {
-                        Position = new LLVector3(terse.ObjectData[i].Data, 22);
+                        Position = tpos;
+                    }
+                    if (AvatarTracker.ContainsKey(tid))
+                    {
+                        if (AvatarTracker[tid].Position != tpos)
+                        {
+                            if (FourDimensions)
+                            {
+                                //new ImaginaryFriend(
+                                //lets create a new friendpoint
+                                ImaginaryFriend temp = new ImaginaryFriend(AvatarTracker[tid].Name.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)[0], AvatarTracker[tid].Name.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)[1] + " time = " + System.DateTime.Now.ToString(), AvatarTracker[tid].Position, true, RegionHandle, localidcount++);
+                                IFriends.Add(temp);
+                                temp.ImaginaryLogin(proxy);
+                            }
+                            AvatarTracker[tid].Position = tpos;
+                        }
                     }
                 }
             }
@@ -503,6 +544,10 @@ namespace imaginary_friends
                         GlobalLocalIDs.Remove(b.ID);
                     }
                 }
+                if (AvatarTracker.ContainsKey(b.ID))
+                {
+                    AvatarTracker.Remove(b.ID);
+                }
             }
             return packet;
         }
@@ -511,38 +556,90 @@ namespace imaginary_friends
             ObjectUpdatePacket ou = (ObjectUpdatePacket)packet;
             foreach (ObjectUpdatePacket.ObjectDataBlock b in ou.ObjectData)
             {
+                LLVector3 lpos = LLVector3.Zero;
+                switch (b.ObjectData.Length)
+                {
+                    case 76:
+                        lpos = new LLVector3(b.ObjectData, 16);
+                        break;
+                    case 60:
+                        lpos = new LLVector3(b.ObjectData, 0);
+                        break;
+                    case 48:
+                        lpos = new LLVector3(
+                            Helpers.UInt16ToFloat(b.ObjectData, 16, -0.5f * 256.0f, 1.5f * 256.0f),
+                            Helpers.UInt16ToFloat(b.ObjectData, 18, -0.5f * 256.0f, 1.5f * 256.0f),
+                            Helpers.UInt16ToFloat(b.ObjectData, 20, -256.0f, 3.0f * 256.0f));
+                        break;
+                    case 32:
+                        lpos = new LLVector3(
+                            Helpers.UInt16ToFloat(b.ObjectData, 0, -0.5f * 256.0f, 1.5f * 256.0f),
+                            Helpers.UInt16ToFloat(b.ObjectData, 2, -0.5f * 256.0f, 1.5f * 256.0f),
+                            Helpers.UInt16ToFloat(b.ObjectData, 4, -256.0f, 3.0f * 256.0f));
+                        break;
+                    case 16:
+                        lpos = new LLVector3(
+                            Helpers.ByteToFloat(b.ObjectData, 0, -256.0f, 256.0f),
+                            Helpers.ByteToFloat(b.ObjectData, 1, -256.0f, 256.0f),
+                            Helpers.ByteToFloat(b.ObjectData, 2, -256.0f, 256.0f));
+                        break;
+                    // OR not :)))
+                    //default: break; // Position is weird, GIVE UP! lets break! :)
+                }
+                if (b.PCode == 47) // 47 == AVATAR
+                {
+                    if (AvatarTracker.ContainsKey(b.ID))
+                    {
+                        //check for movement
+                        if (AvatarTracker[b.ID].Position != lpos && FourDimensions)
+                        {
+                            ImaginaryFriend temp = new ImaginaryFriend(AvatarTracker[b.ID].Name.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)[0], AvatarTracker[b.ID].Name.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)[1] + " " + System.DateTime.Now.ToString(), AvatarTracker[b.ID].Position, true, RegionHandle, localidcount++);
+
+                            IFriends.Add(temp);
+                            temp.SittingOn = b.ParentID; //set sitting on
+                            temp.ImaginaryLogin(proxy);
+
+                           // Console.WriteLine("Create new av here");
+                        }
+
+                        AvatarTracker[b.ID].Position = lpos;
+                        AvatarTracker[b.ID].ParentID = b.ParentID; // sitting?
+                    }
+                    else
+                    {
+                        string[] lines = Helpers.FieldToUTF8String( b.NameValue).Split(new char[] { '\n' });
+                        string tfirstname = "no";
+                        string tlastname = "name";
+                        for (int i = 0; i < lines.Length; i++)
+                        {
+                            if (lines[i].Length > 0)
+                            {
+                                string[] splitlines =  lines[i].Split(new char[] { ' ', '\n', '\t', '\r' });
+                                if (splitlines.Length > 3)
+                                {
+                                    if(splitlines[0].ToLower() == "firstname")
+                                    {
+
+                                        tfirstname = lines[i].Remove(0, lines[i].IndexOf(' ', lines[i].IndexOf("SV")));
+                                    }
+                                    if (splitlines[0].ToLower() == "lastname")
+                                    {
+                                        tlastname = lines[i].Remove(0, lines[i].IndexOf(' ', lines[i].IndexOf("SV")));
+                                    }
+                                }
+                            }
+                        }
+                        AvatarTracker[b.ID] = new AvatarTracking(tfirstname+" "+tlastname,b.FullID, b.ID, lpos, b.ParentID);
+                    }
+                    
+                }
                 if (b.FullID == agentID)
                 {
                     RegionHandle = ou.RegionData.RegionHandle;
                     LocalID = b.ID;
-                    switch(b.ObjectData.Length)
-                    {
-                        case 76:
-                            Position = new LLVector3(b.ObjectData, 16);
-                            break;
-                        case 60:
-                            Position = new LLVector3(b.ObjectData, 0);
-                            break;
-                        case 48:
-                            Position = new LLVector3(
-                                Helpers.UInt16ToFloat(b.ObjectData, 16, -0.5f * 256.0f, 1.5f * 256.0f),
-                                Helpers.UInt16ToFloat(b.ObjectData, 18, -0.5f * 256.0f, 1.5f * 256.0f),
-                                Helpers.UInt16ToFloat(b.ObjectData, 20, -256.0f, 3.0f * 256.0f));
-                            break;
-                        case 32:
-                            Position = new LLVector3(
-                                Helpers.UInt16ToFloat(b.ObjectData, 0, -0.5f * 256.0f, 1.5f * 256.0f),
-                                Helpers.UInt16ToFloat(b.ObjectData, 2, -0.5f * 256.0f, 1.5f * 256.0f),
-                                Helpers.UInt16ToFloat(b.ObjectData, 4, -256.0f, 3.0f * 256.0f));
-                            break;
-                        case 16:
-                            Position = new LLVector3(
-                                Helpers.ByteToFloat(b.ObjectData, 0, -256.0f, 256.0f),
-                                Helpers.ByteToFloat(b.ObjectData, 1, -256.0f, 256.0f),
-                                Helpers.ByteToFloat(b.ObjectData, 2, -256.0f, 256.0f));
-                            break;
-                        default: break;
-                    }
+                    Position = lpos;
+                    //b.PCode =
+                    
                     
                 }
                 if (b.PCode == (byte)ObjectManager.PCode.Prim)
@@ -571,7 +668,7 @@ namespace imaginary_friends
             {
                 if (eb.TypeData.Length == 57)
                 {
-                    if (eb.Type == (byte)MainAvatar.EffectType.PointAt)
+                    if (eb.Type == (byte)EffectType.PointAt)
                     {
                         LLUUID temp = new LLUUID(eb.TypeData, 16);//eb.ID;
 
@@ -617,14 +714,48 @@ namespace imaginary_friends
                 }
                 return null;
             }
-            else if (set.ToLower().StartsWith("/activate"))
+                
+            else if (p.ChatData.Channel == 4 && set.ToLower().StartsWith("d"))
             {
-                List<LLUUID> animations = new List<LLUUID>();
-                animations.Add(Animations.STAND);
-                foreach (ImaginaryFriend f in IFriends)
+                string [] fdsplit = set.ToLower().Split(new char[]{' '});
+                if (fdsplit.Length == 2)
                 {
-                    f.SendAnimations(proxy, animations);
-                    f.SendAppearance(proxy);
+                    FourDimensions = (fdsplit[1] == "on");
+                    SayToUser("4d mode is now " + FourDimensions.ToString());
+                }
+                else
+                {
+                    SayToUser("usage: /4d [on | off]");
+                }
+                return null;
+            }
+                
+            else if (set.ToLower().StartsWith("/animateall"))
+            {
+
+                /*temporairy rubbish down here
+                 * 
+                 * Type type = Type.GetType("libsecondlife.Animations");
+                System.Reflection.MemberInfo[] info = type.GetMembers();
+                string result = "";
+                foreach (System.Reflection.MemberInfo i in info)
+                {
+                    result += i.Name + " " + i.ToString() + "\n";
+                }
+                SayToUser(result);
+                 */
+                string output = set.ToLower().Remove(0, 11).Trim();
+                LLUUID animation = LLUUID.Zero;
+                if(LLUUID.TryParse(output,out animation))
+                {
+                    
+                    List<LLUUID> animations = new List<LLUUID>();
+                    animations.Add(animation);
+                    foreach (ImaginaryFriend f in IFriends)
+                    {
+                        f.SendAnimations(proxy, animations);
+                        f.SendAppearance(proxy);
+                    }
                 }
                 return null;
             }
