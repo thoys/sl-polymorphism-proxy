@@ -1,6 +1,6 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 9.00
-# Visual Studio 2005
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "polymorphism proxy", "polymorphism proxy\polymorphism proxy.csproj", "{28AE1623-DFE2-4410-9325-FA6F7504ADC3}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "imaginary friends", "imaginary friends\imaginary friends.csproj", "{C4237517-509F-428B-9747-7EE13DE3B43D}"
