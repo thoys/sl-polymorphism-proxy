@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using libsecondlife;
-using libsecondlife.Packets;
+using OpenMetaverse;
+using OpenMetaverse.Packets;
+using GridProxy;
 
 namespace polymorphism_proxy
 {
@@ -18,13 +19,15 @@ namespace polymorphism_proxy
         byte bg; // gravity
         byte bs; // size
         Proxy proxy;
+
         public morphProxy()
         {
             proxy = new Proxy(new ProxyConfig("polymophism", "Thoys"));
-            proxy.AddDelegate(libsecondlife.Packets.PacketType.AvatarAppearance, Direction.Incoming, new PacketDelegate(OnIncommingApearance));
-            proxy.AddDelegate(libsecondlife.Packets.PacketType.ChatFromViewer, Direction.Outgoing, new PacketDelegate(OnOutgoingChat));
+            proxy.AddDelegate(OpenMetaverse.Packets.PacketType.AvatarAppearance, Direction.Incoming, new PacketDelegate(OnIncommingApearance));
+            proxy.AddDelegate(OpenMetaverse.Packets.PacketType.ChatFromViewer, Direction.Outgoing, new PacketDelegate(OnOutgoingChat));
             proxy.Start();
         }
+
         Packet OnIncommingApearance(Packet packet, System.Net.IPEndPoint endp)
         {
             jiggletit();
@@ -35,6 +38,7 @@ namespace polymorphism_proxy
             set.VisualParam[NUM+2].ParamValue = 255; // 127; // Breast_Gravity
             return set;
         }
+
         void mod()
         {
             foreach(AvatarAppearancePacket ap in appearances.Values)
@@ -56,12 +60,12 @@ namespace polymorphism_proxy
                 }
                 proxy.InjectPacket(newp, Direction.Incoming);
             }
-           
         }
+
         Packet OnOutgoingChat(Packet packet, System.Net.IPEndPoint endp)
         {
             ChatFromViewerPacket p = (ChatFromViewerPacket)packet;
-            string set = Helpers.FieldToUTF8String(p.ChatData.Message);
+            string set = Utils.BytesToString(p.ChatData.Message);
             if (set.ToLower().StartsWith("set"))
             {
                 string [] split = set.Split(new char[]{' '});
@@ -78,7 +82,8 @@ namespace polymorphism_proxy
             }
             return packet;
         }
-        Dictionary<LLUUID, AvatarAppearancePacket> appearances = new Dictionary<LLUUID, AvatarAppearancePacket>();
+
+        Dictionary<UUID, AvatarAppearancePacket> appearances = new Dictionary<UUID, AvatarAppearancePacket>();
 
 
         void InitializeTitTimer()
@@ -97,7 +102,6 @@ namespace polymorphism_proxy
         //timertit_elapsed
 
         // call jiggletit
-
         void toggletit()
         {
             jiggletitactive = !jiggletitactive;
@@ -133,14 +137,10 @@ namespace polymorphism_proxy
                 default: break;
             }
 
-
-
             if (thisstep > 10)
             {
                 reverseplayback = true;
             }
-
-
 
             if (reverseplayback)
             {
@@ -150,7 +150,6 @@ namespace polymorphism_proxy
             {
                 thisstep++;
             }
-
         }
     }
 }
