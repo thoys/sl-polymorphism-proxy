@@ -5,7 +5,7 @@ using System.Xml;
 using System.Xml.Serialization;
 using System.Xml.Schema;
 using System.IO;
-using libsecondlife;
+using OpenMetaverse;
 
 namespace imaginary_friends.XmlFriends
 {
@@ -37,8 +37,8 @@ namespace imaginary_friends.XmlFriends
             /// <returns>List of friends</returns>
             public ImaginaryFriend GetFriend()
             {
-                ImaginaryFriend iTemp = new ImaginaryFriend(Firstname, Lastname, new LLVector3(PosX,PosY,PosZ), male, RegionHandle, localID);
-                iTemp.ID = new LLUUID(ID);
+                ImaginaryFriend iTemp = new ImaginaryFriend(Firstname, Lastname, new Vector3(PosX,PosY,PosZ), male, RegionHandle, localID);
+                iTemp.ID = new UUID(ID);
                 return iTemp;
             }
             [XmlAttribute("ID")]
