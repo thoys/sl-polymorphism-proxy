@@ -27,9 +27,12 @@ namespace imaginary_friends.XmlFriends
                 PosX = iFriend.Position.X;
                 PosY = iFriend.Position.Y;
                 PosZ = iFriend.Position.Z;
+                RotX = iFriend.Rotation.X;
+                RotY = iFriend.Rotation.Y;
+                RotZ = iFriend.Rotation.Z;
+                RotW = iFriend.Rotation.W;
                 male = iFriend.is_male;
                 RegionHandle = iFriend.RegionHandle;
-                
             }
             /// <summary>
             /// Converts the FriendConfig to an ImaginaryFriend object
@@ -37,7 +40,7 @@ namespace imaginary_friends.XmlFriends
             /// <returns>List of friends</returns>
             public ImaginaryFriend GetFriend()
             {
-                ImaginaryFriend iTemp = new ImaginaryFriend(Firstname, Lastname, new Vector3(PosX,PosY,PosZ), male, RegionHandle, localID);
+                ImaginaryFriend iTemp = new ImaginaryFriend(Firstname, Lastname, new Vector3(PosX,PosY,PosZ), new Quaternion(RotX,RotY,RotZ,RotW), male, RegionHandle, localID);
                 iTemp.ID = new UUID(ID);
                 return iTemp;
             }
@@ -55,6 +58,14 @@ namespace imaginary_friends.XmlFriends
             public float PosY;
             [XmlAttribute("PosZ")]
             public float PosZ;
+            [XmlAttribute("RotX")]
+            public float RotX;
+            [XmlAttribute("RotY")]
+            public float RotY;
+            [XmlAttribute("RotZ")]
+            public float RotZ;
+            [XmlAttribute("RotW")]
+            public float RotW;
             [XmlAttribute("male")]
             public bool male;
             [XmlAttribute("RegionHandle")]
@@ -105,11 +116,11 @@ namespace imaginary_friends.XmlFriends
         /// </summary>
         /// <param name="Friends"></param>
         /// <returns>true if save worked</returns>
-        public bool Save(List<ImaginaryFriend> Friends)
+        public bool Save(Dictionary<UUID,ImaginaryFriend> Friends)
         {
             bool result = true;
             imaginaryfriends.Clear();
-            foreach(ImaginaryFriend friend in Friends)
+            foreach(ImaginaryFriend friend in Friends.Values)
             {                
                 imaginaryfriends.Add(new FriendConfig(friend));
             }
